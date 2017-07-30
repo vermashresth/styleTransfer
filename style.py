@@ -13,6 +13,7 @@ import torchvision.models as models
 
 import copy
 
+import cv2
 use_cuda = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
@@ -23,15 +24,21 @@ loader = transforms.Compose([
     transforms.ToTensor()])  # transform it into a torch tensor
 
 def image_loader(image_name):
-    image = Image.open(image_name)
+    img=cv2.imread(image_name)
+    img=cv2.resize(img,(300,300),cv2.INTER_LINEAR)
+    
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(img)
+    #image = Image.open(image_name)
     image = Variable(loader(image))
     # fake batch dimension required to fit network's input dimensions
     image = image.unsqueeze(0)
     return image
 
 
-style_img = image_loader("images/picasso.jpg").type(dtype)
-content_img = image_loader("images/dancing.jpg").type(dtype)
+style_img = image_loader("images/woodb.jpg").type(dtype)
+
+content_img = image_loader("images/woods.jpg").type(dtype)
 
 assert style_img.size() == content_img.size(), \
     "we need to import style and content images of the same size"
@@ -215,7 +222,7 @@ def get_input_param_optimizer(input_img):
     optimizer = optim.LBFGS([input_param])
     return input_param, optimizer
 
-def run_style_transfer(cnn, content_img, style_img, input_img, num_steps=100,
+def run_style_transfer(cnn, content_img, style_img, input_img, num_steps=200,
                        style_weight=1000, content_weight=1):
     """Run the style transfer."""
     print('Building the style transfer model..')
@@ -251,7 +258,7 @@ def run_style_transfer(cnn, content_img, style_img, input_img, num_steps=100,
             return style_score + content_score
 
         optimizer.step(closure)
-
+	
     # a last correction...
     input_param.data.clamp_(0, 1)
     return input_param.data
@@ -264,7 +271,6 @@ imshow(output, title='Output Image')
 
 g=raw_input("press enter1")
 # sphinx_gallery_thumbnail_number = 4
-plt.ioff()
-plt.show()
+
 h=raw_input("press enter2")
 output.save("result.jpg")
