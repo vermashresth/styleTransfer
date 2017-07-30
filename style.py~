@@ -118,14 +118,16 @@ class StyleLoss(nn.Module):
         return self.loss
 
 
-
+print ("Loading vgg")
 cnn = models.vgg19(pretrained=True).features
+print ("vgg loaded")
+
 
 # move it to the GPU if possible:
 if use_cuda:
     cnn = cnn.cuda()
 
-print (cnn)
+
 
 # desired depth layers to compute style/content losses :
 content_layers_default = ['conv_4']
@@ -198,3 +200,71 @@ def get_style_model_and_losses(cnn, style_img, content_img,
             model.add_module(name, layer)  # ***
 
     return model, style_losses, content_losses
+
+input_img = content_img.clone()
+# if you want to use a white noise instead uncomment the below line:
+# input_img = Variable(torch.randn(content_img.data.size())).type(dtype)
+
+# add the original input image to the figure:
+plt.figure()
+imshow(input_img.data, title='Input Image')
+
+def get_input_param_optimizer(input_img):
+    # this line to show that input is a parameter that requires a gradient
+    input_param = nn.Parameter(input_img.data)
+    optimizer = optim.LBFGS([input_param])
+    return input_param, optimizer
+
+def run_style_transfer(cnn, content_img, style_img, input_img, num_steps=100,
+                       style_weight=1000, content_weight=1):
+    """Run the style transfer."""
+    print('Building the style transfer model..')
+    model, style_losses, content_losses = get_style_model_and_losses(cnn,
+        style_img, content_img, style_weight, content_weight)
+    input_param, optimizer = get_input_param_optimizer(input_img)
+
+    print('Optimizing..')
+    run = [0]
+    while run[0] <= num_steps:
+
+        def closure():
+            # correct the values of updated input image
+            input_param.data.clamp_(0, 1)
+
+            optimizer.zero_grad()
+            model(input_param)
+            style_score = 0
+            content_score = 0
+
+            for sl in style_losses:
+                style_score += sl.backward()
+            for cl in content_losses:
+                content_score += cl.backward()
+
+            run[0] += 1
+            if run[0] % 10 == 0:
+                print("run {}:".format(run))
+                print('Style Loss : {:4f} Content Loss: {:4f}'.format(
+                    style_score.data[0], content_score.data[0]))
+                print()
+
+            return style_score + content_score
+
+        optimizer.step(closure)
+
+    # a last correction...
+    input_param.data.clamp_(0, 1)
+    return input_param.data
+
+output = run_style_transfer(cnn, content_img, style_img, input_img)
+
+plt.figure()
+imshow(output, title='Output Image')
+
+
+g=raw_input("press enter")
+# sphinx_gallery_thumbnail_number = 4
+plt.ioff()
+plt.show()
+h=raw_input("press enter")
+output.save("result.jpg")
