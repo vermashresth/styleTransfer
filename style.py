@@ -36,9 +36,9 @@ def image_loader(image_name):
     return image
 
 
-style_img = image_loader("images/woodb.jpg").type(dtype)
+style_img = image_loader("/home/petrichor/Downloads/style.jpg").type(dtype)
 
-content_img = image_loader("images/woods.jpg").type(dtype)
+content_img = image_loader("/home/petrichor/Downloads/content.jpg").type(dtype)
 
 assert style_img.size() == content_img.size(), \
     "we need to import style and content images of the same size"
@@ -273,4 +273,4 @@ g=raw_input("press enter1")
 # sphinx_gallery_thumbnail_number = 4
 
 h=raw_input("press enter2")
-output.save("result.jpg")
+output.save("/home/petrichor/result.jpg")
